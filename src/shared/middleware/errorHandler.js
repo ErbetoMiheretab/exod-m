@@ -1,102 +1,75 @@
-import logger from '../utils/logger';
+import { error as _error, warn } from '../utils/logger';
 import { errorResponse } from '../utils/responses';
-
-class AppError extends Error {
-  constructor(message, statusCode = 500, isOperational = true) {
-    super(message);
-    this.statusCode = statusCode;
-    this.isOperational = isOperational;
-    Error.captureStackTrace(this, this.constructor);
-  }
-}
-
-class ValidationError extends AppError {
-  constructor(message, errors = []) {
-    super(message, 400);
-    this.errors = errors;
-  }
-}
-
-class NotFoundError extends AppError {
-  constructor(message = 'Resource not found') {
-    super(message, 404);
-  }
-}
-
-class UnauthorizedError extends AppError {
-  constructor(message = 'Unauthorized') {
-    super(message, 401);
-  }
-}
-
-class ForbiddenError extends AppError {
-  constructor(message = 'Forbidden') {
-    super(message, 403);
-  }
-}
-
-class ConflictError extends AppError {
-  constructor(message = 'Resource already exists') {
-    super(message, 409);
-  }
-}
+import { ValidationError, NotFoundError, UnauthorizedError, ForbiddenError, ConflictError, DatabaseError } from '../utils/errors';
 
 const errorHandler = (err, req, res, next) => {
   let error = { ...err };
   error.message = err.message;
   error.statusCode = err.statusCode || 500;
+  error.timestamp = new Date().toISOString();
 
-  // Log error
+  // Log error with audit trail
   if (error.statusCode >= 500) {
-    logger.error('Server Error:', {
+    _error('Server Error:', {
       error: err,
       stack: err.stack,
       url: req.originalUrl,
       method: req.method,
       body: req.body,
       user: req.user?.id,
+      userId: req.user?.id,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+      timestamp: error.timestamp,
     });
   } else {
-    logger.warn('Client Error:', {
+    warn('Client Error:', {
       message: err.message,
       statusCode: error.statusCode,
       url: req.originalUrl,
       user: req.user?.id,
+      ip: req.ip,
+      timestamp: error.timestamp,
     });
   }
 
-  // Prisma errors
+  // Handle Prisma errors
   if (err.code === 'P2002') {
     error = new ConflictError('Resource already exists');
   } else if (err.code === 'P2025') {
     error = new NotFoundError('Resource not found');
+  } else if (err.code && err.code.startsWith('P20')) {
+    error = new DatabaseError('Database operation failed');
   }
 
-  // JWT errors
+  // Handle JWT errors
   if (err.name === 'JsonWebTokenError') {
     error = new UnauthorizedError('Invalid token');
   } else if (err.name === 'TokenExpiredError') {
     error = new UnauthorizedError('Token expired');
   }
 
-  // Validation errors
+  // Handle validation errors from express-validator or similar
   if (err.name === 'ValidationError' && err.errors) {
-    const errors = Object.values(err.errors).map((e) => ({
-      field: e.path,
-      message: e.message,
-    }));
+    const errors = Array.isArray(err.errors) 
+      ? err.errors.map(e => ({
+          field: e.param || e.path,
+          message: e.msg || e.message,
+        }))
+      : Object.values(err.errors).map(e => ({
+          field: e.path,
+          message: e.message,
+        }));
     error = new ValidationError('Validation failed', errors);
   }
 
+  // Handle multer file upload errors
+  if (err.code === 'LIMIT_FILE_SIZE' || err.code === 'LIMIT_FILE_COUNT') {
+    error = new ValidationError(err.message);
+  }
+
+  // Send error response
   errorResponse(res, error);
 };
 
-module.exports = {
-  AppError,
-  ValidationError,
-  NotFoundError,
-  UnauthorizedError,
-  ForbiddenError,
-  ConflictError,
-  errorHandler,
-};
+export default { errorHandler };
