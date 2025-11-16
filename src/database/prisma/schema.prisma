@@ -1,0 +1,355 @@
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ============= SHARED MODELS =============
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  password        String
+  name            String
+  department      String?
+  clearanceLevel  Int       @default(1) // 1-5 security clearance
+  active          Boolean   @default(true)
+  roleId          String
+  role            Role      @relation(fields: [roleId], references: [id])
+  
+  // Audit fields
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  lastLoginAt     DateTime?
+  
+  // Relations
+  sessions        Session[]
+  auditLogs       AuditLog[]
+  documents       Document[]      @relation("DocumentCreator")
+  tasks           Task[]          @relation("TaskCreator")
+  loanApplications LoanApplication[] @relation("LoanApplicant")
+  
+  @@map("users")
+}
+
+model Role {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  description String?
+  isSystem    Boolean      @default(false) // System roles can't be deleted
+  
+  users       User[]
+  permissions Permission[]
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  code        String   @unique // e.g., "DOCUMENTS.CREATE"
+  description String
+  module      String   // documents, tasks, loans
+  
+  roles       Role[]
+  
+  createdAt   DateTime @default(now())
+  
+  @@map("permissions")
+}
+
+model Session {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token           String    @unique
+  refreshToken    String?   @unique
+  ipAddress       String?
+  userAgent       String?
+  expiresAt       DateTime
+  lastActivityAt  DateTime  @default(now())
+  invalidatedAt   DateTime?
+  
+  createdAt       DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([token])
+  @@map("sessions")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  action      String   // CREATE, UPDATE, DELETE, READ, etc.
+  entityType  String   // Document, Task, Loan, etc.
+  entityId    String?
+  oldValue    String?  @db.Text // JSON
+  newValue    String?  @db.Text // JSON
+  changes     String?  @db.Text // JSON
+  metadata    String?  @db.Text // JSON
+  ipAddress   String?
+  userAgent   String?
+  timestamp   DateTime @default(now())
+  
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
+// ============= DOCUMENT MODULE =============
+
+model Document {
+  id                  String    @id @default(uuid())
+  title               String
+  content             String?   @db.Text
+  type                String    // letter, memo, report, etc.
+  status              String    @default("draft") // draft, published, archived
+  confidentialityLevel Int      @default(1)
+  department          String?
+  version             Int       @default(1)
+  
+  // File storage
+  fileUrl             String?
+  fileName            String?
+  fileSize            Int?
+  mimeType            String?
+  
+  // Relations
+  createdBy           String
+  createdByUser       User      @relation("DocumentCreator", fields: [createdBy], references: [id])
+  updatedBy           String?
+  
+  tags                DocumentTag[]
+  sharedWith          DocumentShare[]
+  
+  // Audit fields
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+  deletedBy           String?
+  
+  @@index([createdBy])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@map("documents")
+}
+
+model DocumentTag {
+  id         String   @id @default(uuid())
+  name       String
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  @@unique([documentId, name])
+  @@map("document_tags")
+}
+
+model DocumentShare {
+  id         String   @id @default(uuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     String
+  permission String   // read, write
+  
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime?
+  
+  @@unique([documentId, userId])
+  @@map("document_shares")
+}
+
+// ============= TASK MODULE =============
+
+model Task {
+  id          String    @id @default(uuid())
+  title       String
+  description String?   @db.Text
+  status      String    @default("pending") // pending, in_progress, completed, cancelled
+  priority    String    @default("medium") // low, medium, high, urgent
+  
+  // Assignment
+  createdBy   String
+  createdByUser User    @relation("TaskCreator", fields: [createdBy], references: [id])
+  assignedTo  String?
+  
+  // Dates
+  dueDate     DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  
+  // Relations
+  reports     Report[]
+  
+  // Audit fields
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  
+  @@index([createdBy])
+  @@index([assignedTo])
+  @@index([status])
+  @@index([dueDate])
+  @@map("tasks")
+}
+
+model Report {
+  id          String   @id @default(uuid())
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  title       String
+  content     String   @db.Text
+  reportType  String   // progress, final, incident
+  
+  // File attachments
+  attachments ReportAttachment[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([taskId])
+  @@map("reports")
+}
+
+model ReportAttachment {
+  id        String   @id @default(uuid())
+  reportId  String
+  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  
+  fileName  String
+  fileUrl   String
+  fileSize  Int
+  mimeType  String
+  
+  createdAt DateTime @default(now())
+  
+  @@map("report_attachments")
+}
+
+// ============= LOAN MODULE =============
+
+model LoanApplication {
+  id                String    @id @default(uuid())
+  applicationNumber String    @unique
+  applicantId       String
+  applicant         User      @relation("LoanApplicant", fields: [applicantId], references: [id])
+  
+  loanType          String    // personal, business, mortgage
+  requestedAmount   Decimal   @db.Decimal(15, 2)
+  approvedAmount    Decimal?  @db.Decimal(15, 2)
+  interestRate      Decimal   @db.Decimal(5, 2)
+  termMonths        Int
+  
+  status            String    @default("pending") // pending, approved, rejected, disbursed, closed
+  
+  // Approval workflow
+  reviewedBy        String?
+  reviewedAt        DateTime?
+  approvedBy        String?
+  approvedAt        DateTime?
+  rejectionReason   String?   @db.Text
+  
+  // Disbursement
+  disbursedAt       DateTime?
+  disbursementMethod String?
+  
+  // Relations
+  savings           SavingsAccount?
+  disbursements     LoanDisbursement[]
+  repayments        LoanRepayment[]
+  
+  // Audit fields
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@index([applicantId])
+  @@index([status])
+  @@index([applicationNumber])
+  @@map("loan_applications")
+}
+
+model SavingsAccount {
+  id              String    @id @default(uuid())
+  accountNumber   String    @unique
+  loanId          String?   @unique
+  loan            LoanApplication? @relation(fields: [loanId], references: [id])
+  
+  balance         Decimal   @db.Decimal(15, 2) @default(0)
+  accountType     String    @default("regular") // regular, fixed, recurring
+  interestRate    Decimal   @db.Decimal(5, 2)
+  
+  status          String    @default("active") // active, dormant, closed
+  
+  // Relations
+  transactions    SavingsTransaction[]
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  closedAt        DateTime?
+  
+  @@index([accountNumber])
+  @@map("savings_accounts")
+}
+
+model SavingsTransaction {
+  id              String    @id @default(uuid())
+  accountId       String
+  account         SavingsAccount @relation(fields: [accountId], references: [id])
+  
+  transactionType String    // deposit, withdrawal, interest, fee
+  amount          Decimal   @db.Decimal(15, 2)
+  balanceBefore   Decimal   @db.Decimal(15, 2)
+  balanceAfter    Decimal   @db.Decimal(15, 2)
+  
+  description     String?
+  reference       String?
+  
+  createdAt       DateTime  @default(now())
+  
+  @@index([accountId])
+  @@index([createdAt])
+  @@map("savings_transactions")
+}
+
+model LoanDisbursement {
+  id          String    @id @default(uuid())
+  loanId      String
+  loan        LoanApplication @relation(fields: [loanId], references: [id])
+  
+  amount      Decimal   @db.Decimal(15, 2)
+  method      String    // bank_transfer, check, cash
+  reference   String?
+  
+  disbursedAt DateTime  @default(now())
+  
+  @@index([loanId])
+  @@map("loan_disbursements")
+}
+
+model LoanRepayment {
+  id              String    @id @default(uuid())
+  loanId          String
+  loan            LoanApplication @relation(fields: [loanId], references: [id])
+  
+  amount          Decimal   @db.Decimal(15, 2)
+  principalAmount Decimal   @db.Decimal(15, 2)
+  interestAmount  Decimal   @db.Decimal(15, 2)
+  
+  paymentMethod   String    // bank_transfer, cash, check
+  reference       String?
+  
+  paidAt          DateTime  @default(now())
+  
+  @@index([loanId])
+  @@index([paidAt])
+  @@map("loan_repayments")
+}
