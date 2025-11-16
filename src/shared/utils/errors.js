@@ -1,66 +1,98 @@
-// src/shared/utils/errors.js
-
+/**
+ * Base application error
+ */
 class AppError extends Error {
-  constructor(message, statusCode = 500, isOperational = true) {
+  constructor(message, statusCode = 500, errors = []) {
     super(message);
     this.statusCode = statusCode;
-    this.isOperational = isOperational;
+    this.errors = errors;
     this.timestamp = new Date().toISOString();
-    
+    this.isOperational = true;
     Error.captureStackTrace(this, this.constructor);
   }
 }
 
+/**
+ * Bad request error (400)
+ */
+class BadRequestError extends AppError {
+  constructor(message = 'Bad request', errors = []) {
+    super(message, 400, errors);
+  }
+}
+
+/**
+ * Validation error (400)
+ */
 class ValidationError extends AppError {
-  constructor(message, errors = []) {
-    super(message, 400);
-    this.errors = errors;
+  constructor(message = 'Validation failed', errors = []) {
+    super(message, 400, errors);
   }
 }
 
-class NotFoundError extends AppError {
-  constructor(message = 'Resource not found') {
-    super(message, 404);
-  }
-}
-
+/**
+ * Unauthorized error (401)
+ * 
+ */
 class UnauthorizedError extends AppError {
   constructor(message = 'Unauthorized') {
     super(message, 401);
   }
 }
 
+/**
+ * Forbidden error (403)
+ */
 class ForbiddenError extends AppError {
   constructor(message = 'Forbidden') {
     super(message, 403);
   }
 }
 
-class ConflictError extends AppError {
-  constructor(message = 'Resource already exists') {
-    super(message, 409);
+/**
+ * Not found error (404)
+ */
+class NotFoundError extends AppError {
+  constructor(message = 'Resource not found') {
+    super(message, 404);
   }
 }
 
-class RateLimitError extends AppError {
-  constructor(message = 'Rate limit exceeded') {
+/**
+ * Conflict error (409)
+ */
+class ConflictError extends AppError {
+  constructor(message = 'Conflict', errors = []) {
+    super(message, 409, errors);
+  }
+}
+
+/**
+ * Too many requests error (429)
+ */
+class TooManyRequestsError extends AppError {
+  constructor(message = 'Too many requests') {
     super(message, 429);
   }
 }
 
-class DatabaseError extends AppError {
-  constructor(message = 'Database error') {
+/**
+ * Internal server error (500)
+ */
+class InternalServerError extends AppError {
+  constructor(message = 'Internal server error') {
     super(message, 500);
   }
 }
 
-export default {
+export {
   AppError,
+  BadRequestError,
   ValidationError,
-  NotFoundError,
   UnauthorizedError,
   ForbiddenError,
+  NotFoundError,
   ConflictError,
-  RateLimitError,
-  DatabaseError,
+  TooManyRequestsError,
+  InternalServerError
 };
