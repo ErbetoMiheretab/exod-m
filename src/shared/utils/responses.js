@@ -1,11 +1,13 @@
-const successResponse = (
+// src/shared/utils/responses.js
+
+export const successResponse = (
   res,
   data = null,
   message = 'Success',
   statusCode = 200,
   context = {}
 ) => {
-  res.status(statusCode).json({
+  return res.status(statusCode).json({
     success: true,
     message,
     data,
@@ -14,7 +16,7 @@ const successResponse = (
   });
 };
 
-const errorResponse = (res, error, context = {}) => {
+export const errorResponse = (res, error, context = {}) => {
   const statusCode = error.statusCode || 500;
   const message = error.message || 'Something went wrong';
 
@@ -26,21 +28,20 @@ const errorResponse = (res, error, context = {}) => {
     ...context,
   };
 
-  if (error.errors && Array.isArray(error.errors)) {
+  // Don't leak stack traces in production
+  if (process.env.NODE_ENV !== 'production' && error.stack) {
+    payload.stack = error.stack;
+  }
+
+  if (error.errors && (Array.isArray(error.errors) || Object.keys(error.errors).length > 0)) {
     payload.errors = error.errors;
   }
 
-  res.status(statusCode).json(payload);
+  return res.status(statusCode).json(payload);
 };
 
-const paginatedResponse = (
-  res,
-  data,
-  pagination,
-  message = 'Success',
-  context = {}
-) => {
-  res.status(200).json({
+export const paginatedResponse = (res, data, pagination, message = 'Success', context = {}) => {
+  return res.status(200).json({
     success: true,
     message,
     data,
@@ -48,10 +49,4 @@ const paginatedResponse = (
     timestamp: new Date().toISOString(),
     ...context,
   });
-};
-
-export default {
-  successResponse,
-  errorResponse,
-  paginatedResponse,
 };

@@ -1,18 +1,15 @@
-import path from 'path'
+import path from 'path';
 
-import winston from "winston";
-
-
+import winston from 'winston';
 
 //Define log levels
-const levels= {
+const levels = {
   error: 0,
-  warn:1,
-  info:2,
-  http:3,
-  debug:4,
-} 
-
+  warn: 1,
+  info: 2,
+  http: 3,
+  debug: 4,
+};
 
 //Define colors for each level
 
@@ -22,7 +19,7 @@ const colors = {
   info: 'green',
   http: 'magenta',
   debug: 'white',
-}
+};
 
 winston.addColors(colors);
 
@@ -32,7 +29,6 @@ const level = () => {
   const isDevelopment = env === 'development';
   return isDevelopment ? 'debug' : 'info';
 };
-
 
 // Define log format
 const format = winston.format.combine(
@@ -49,39 +45,33 @@ const format = winston.format.combine(
 const consoleFormat = winston.format.combine(
   winston.format.colorize({ all: true }),
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-  winston.format.printf(
-    (info) => {
-      const { timestamp, level, message, metadata } = info;
-      const metaStr = Object.keys(metadata).length 
-        ? '\n' + JSON.stringify(metadata, null, 2) 
-        : '';
-      return `${timestamp} [${level}]: ${message}${metaStr}`;
-    }
-  )
+  winston.format.printf((info) => {
+    const { timestamp, level, message, metadata } = info;
+    const metaStr = Object.keys(metadata).length ? '\n' + JSON.stringify(metadata, null, 2) : '';
+    return `${timestamp} [${level}]: ${message}${metaStr}`;
+  })
 );
-
 
 // Define transports
 const transports = [
   // Console transport
   new winston.transports.Console({
-    format: process.env.NODE_ENV === 'production' ? format : consoleFormat
+    format: process.env.NODE_ENV === 'production' ? format : consoleFormat,
   }),
-  
+
   // Error file transport
   new winston.transports.File({
     filename: path.join('logs', 'error.log'),
     level: 'error',
-    format
+    format,
   }),
-  
+
   // Combined file transport
   new winston.transports.File({
     filename: path.join('logs', 'combined.log'),
-    format
-  })
+    format,
+  }),
 ];
-
 
 // Create logger instance
 const logger = winston.createLogger({
@@ -90,15 +80,15 @@ const logger = winston.createLogger({
   format,
   transports,
   exceptionHandlers: [
-    new winston.transports.File({ 
-      filename: path.join('logs', 'exceptions.log') 
-    })
+    new winston.transports.File({
+      filename: path.join('logs', 'exceptions.log'),
+    }),
   ],
   rejectionHandlers: [
-    new winston.transports.File({ 
-      filename: path.join('logs', 'rejections.log') 
-    })
-  ]
+    new winston.transports.File({
+      filename: path.join('logs', 'rejections.log'),
+    }),
+  ],
 });
 
-export {logger, transports};
+export { logger, transports };

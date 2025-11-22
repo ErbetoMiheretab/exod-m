@@ -1,21 +1,34 @@
-import { error as _error, warn } from '../utils/logger';
+import {
+  ValidationError,
+  NotFoundError,
+  UnauthorizedError,
+  ConflictError,
+  DatabaseError,
+} from '../utils/errors';
+import { logger } from '../utils/logger';
 import { errorResponse } from '../utils/responses';
-import { ValidationError, NotFoundError, UnauthorizedError, ForbiddenError, ConflictError, DatabaseError } from '../utils/errors';
 
 const errorHandler = (err, req, res, next) => {
-  let error = { ...err };
+  // 1. Prevent "Headers already sent" errors
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  let error = err;
+  // JS Error properties (message, stack) are not enumerable, so we must copy them manually
   error.message = err.message;
+  error.stack = err.stack;
   error.statusCode = err.statusCode || 500;
   error.timestamp = new Date().toISOString();
 
   // Log error with audit trail
   if (error.statusCode >= 500) {
-    _error('Server Error:', {
+    logger.error('Server Error:', {
       error: err,
       stack: err.stack,
       url: req.originalUrl,
       method: req.method,
-      body: req.body,
+      body: { ...req.body, password: '[REDACTED]' }, // sanitize sensitive fields
       user: req.user?.id,
       userId: req.user?.id,
       ip: req.ip,
@@ -23,7 +36,7 @@ const errorHandler = (err, req, res, next) => {
       timestamp: error.timestamp,
     });
   } else {
-    warn('Client Error:', {
+    logger.warn('Client Error:', {
       message: err.message,
       statusCode: error.statusCode,
       url: req.originalUrl,
@@ -35,32 +48,34 @@ const errorHandler = (err, req, res, next) => {
 
   // Handle Prisma errors
   if (err.code === 'P2002') {
-    error = new ConflictError('Resource already exists');
+    error = new ConflictError('Resource already exists', { cause: err });
   } else if (err.code === 'P2025') {
-    error = new NotFoundError('Resource not found');
+    error = new NotFoundError('Resource not found', { cause: err });
   } else if (err.code && err.code.startsWith('P20')) {
-    error = new DatabaseError('Database operation failed');
+    error = new DatabaseError('Database operation failed', { cause: err });
   }
 
   // Handle JWT errors
   if (err.name === 'JsonWebTokenError') {
-    error = new UnauthorizedError('Invalid token');
+    error = new UnauthorizedError('Invalid token', { cause: err });
   } else if (err.name === 'TokenExpiredError') {
-    error = new UnauthorizedError('Token expired');
+    error = new UnauthorizedError('Token expired', { cause: err });
   }
 
-  // Handle validation errors from express-validator or similar
+  // Validation Errors (express-validator / Joi)
   if (err.name === 'ValidationError' && err.errors) {
-    const errors = Array.isArray(err.errors) 
-      ? err.errors.map(e => ({
-          field: e.param || e.path,
+    // Handle different validation library error structures
+    const formattedErrors = Array.isArray(err.errors)
+      ? err.errors.map((e) => ({
+          field: e.param || e.path || e.field,
           message: e.msg || e.message,
         }))
-      : Object.values(err.errors).map(e => ({
-          field: e.path,
-          message: e.message,
+      : Object.keys(err.errors).map((key) => ({
+          field: key,
+          message: err.errors[key].message,
         }));
-    error = new ValidationError('Validation failed', errors);
+
+    error = new ValidationError('Validation failed', formattedErrors);
   }
 
   // Handle multer file upload errors

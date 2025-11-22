@@ -2,8 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { verify } from 'jsonwebtoken';
 
 import { UnauthorizedError } from '../utils/errors';
-
-const logger = require('../utils/logger');
+import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
 
