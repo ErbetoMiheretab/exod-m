@@ -1,10 +1,7 @@
 // eslint.config.js
-import { createRequire } from 'node:module';
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
-
-const require = createRequire(import.meta.url);
-const importPlugin = require('eslint-plugin-import');
+import importPlugin from 'eslint-plugin-import';
 
 export default [
   js.configs.recommended,
@@ -14,13 +11,22 @@ export default [
   {
     files: ['**/*.{js,mjs,cjs}'],
     languageOptions: {
-      ecmaVersion: 2022,
+      ecmaVersion: 'latest',
       sourceType: 'module',
       globals: {
-        console: 'readonly', process: 'readonly', Buffer: 'readonly',
-        __dirname: 'readonly', __filename: 'readonly',
-        exports: 'writable', module: 'writable', require: 'readonly',
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        exports: 'writable',
+        module: 'writable',
+        require: 'readonly',
         global: 'readonly',
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearTimeout: 'readonly',
+        clearInterval: 'readonly',
       },
     },
     rules: {

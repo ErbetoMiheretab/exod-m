@@ -1,0 +1,190 @@
+// src/modules/users/routes/index.js
+
+import { Router } from 'express';
+const router = Router();
+
+// 1. Import Constants (Best Practice to avoid typos)
+import Constants from '../../../shared/constants/permissions';
+const { PERMISSIONS } = Constants;
+
+// 2. Fix Imports: Use { authenticate } and { requirePermission }
+import { authenticate } from '../../../shared/middleware/authentication';
+import { requirePermission } from '../../../shared/middleware/authorization'; // Changed from authorize
+import { validate } from '../../../shared/middleware/validation';
+
+// Controllers
+import { 
+  createPermission, bulkCreatePermissions, getAllPermissions, 
+  getPermissionsByModule, getPermissionById, deletePermission 
+} from '../controllers/permissionController';
+
+import { 
+  createRole, getAllRoles, getRoleById, updateRole, 
+  deleteRole, assignPermissions, removePermissions 
+} from '../controllers/roleController';
+
+import { 
+  createUser, getAllUsers, getUserStats, getUserProfile, 
+  getUserById, updateUser, deleteUser, changePassword 
+} from '../controllers/userController';
+
+// Validators
+import { createPermissionSchema, permissionIdSchema } from '../validators/permissionValidators';
+import { createRoleSchema, updateRoleSchema, assignPermissionsSchema, roleIdSchema } from '../validators/roleValidators';
+import { createUserSchema, updateUserSchema, changePasswordSchema, userIdSchema } from '../validators/userValidators';
+
+
+// ============= USER ROUTES =============
+
+// Protected routes
+router.use(authenticate); // All routes below require authentication
+
+// User management routes
+router.post(
+  '/users',
+  requirePermission(PERMISSIONS.USERS_CREATE), // Updated function and used constant
+  validate(createUserSchema),
+  createUser
+);
+
+router.get(
+  '/users',
+  requirePermission(PERMISSIONS.USERS_READ),
+  getAllUsers
+);
+
+router.get(
+  '/users/stats',
+  requirePermission(PERMISSIONS.USERS_READ),
+  getUserStats
+);
+
+router.get(
+  '/users/profile',
+  // Profile usually doesn't need specific permission, just authentication (which is already checked)
+  getUserProfile
+);
+
+router.get(
+  '/users/:id',
+  requirePermission(PERMISSIONS.USERS_READ),
+  validate(userIdSchema, 'params'),
+  getUserById
+);
+
+router.patch(
+  '/users/:id',
+  requirePermission(PERMISSIONS.USERS_UPDATE),
+  validate(userIdSchema, 'params'),
+  validate(updateUserSchema),
+  updateUser
+);
+
+router.delete(
+  '/users/:id',
+  requirePermission(PERMISSIONS.USERS_DELETE),
+  validate(userIdSchema, 'params'),
+  deleteUser
+);
+
+router.post(
+  '/users/change-password',
+  validate(changePasswordSchema),
+  changePassword
+);
+
+// ============= ROLE ROUTES =============
+
+router.post(
+  '/roles',
+  requirePermission(PERMISSIONS.USERS_CREATE),
+  validate(createRoleSchema),
+  createRole
+);
+
+router.get(
+  '/roles',
+  requirePermission(PERMISSIONS.USERS_READ),
+  getAllRoles
+);
+
+router.get(
+  '/roles/:id',
+  requirePermission(PERMISSIONS.USERS_READ),
+  validate(roleIdSchema, 'params'),
+  getRoleById
+);
+
+router.patch(
+  '/roles/:id',
+  requirePermission(PERMISSIONS.USERS_UPDATE),
+  validate(roleIdSchema, 'params'),
+  validate(updateRoleSchema),
+  updateRole
+);
+
+router.delete(
+  '/roles/:id',
+  requirePermission(PERMISSIONS.USERS_DELETE),
+  validate(roleIdSchema, 'params'),
+  deleteRole
+);
+
+router.post(
+  '/roles/:id/permissions',
+  requirePermission(PERMISSIONS.USERS_UPDATE),
+  validate(roleIdSchema, 'params'),
+  validate(assignPermissionsSchema),
+  assignPermissions
+);
+
+router.delete(
+  '/roles/:id/permissions',
+  requirePermission(PERMISSIONS.USERS_UPDATE),
+  validate(roleIdSchema, 'params'),
+  validate(assignPermissionsSchema),
+  removePermissions
+);
+
+// ============= PERMISSION ROUTES =============
+
+router.post(
+  '/permissions',
+  requirePermission(PERMISSIONS.USERS_CREATE), // Assuming only admins/creators can make permissions
+  validate(createPermissionSchema),
+  createPermission
+);
+
+router.post(
+  '/permissions/bulk',
+  requirePermission(PERMISSIONS.USERS_CREATE),
+  bulkCreatePermissions
+);
+
+router.get(
+  '/permissions',
+  requirePermission(PERMISSIONS.USERS_READ),
+  getAllPermissions
+);
+
+router.get(
+  '/permissions/module/:module',
+  requirePermission(PERMISSIONS.USERS_READ),
+  getPermissionsByModule
+);
+
+router.get(
+  '/permissions/:id',
+  requirePermission(PERMISSIONS.USERS_READ),
+  validate(permissionIdSchema, 'params'),
+  getPermissionById
+);
+
+router.delete(
+  '/permissions/:id',
+  requirePermission(PERMISSIONS.USERS_DELETE),
+  validate(permissionIdSchema, 'params'),
+  deletePermission
+);
+
+export default router;
