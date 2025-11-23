@@ -1,10 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import app from './app.js';
+import { port, env } from './config/env.js';
+import prisma from './database/index.js'; 
+import { logger } from './shared/utils/logger.js'; // Import the logger instance
 
-import app from './app'; // Import the express app instance
-import { port, env } from './config/env';
-import { logger } from './shared/utils/logger'; // Import the logger instance
-
-const prisma = new PrismaClient();
 
 async function startServer() {
   try {

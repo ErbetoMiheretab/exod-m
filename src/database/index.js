@@ -1,8 +1,16 @@
 import { PrismaClient } from '@prisma/client';
 
+import { dbConfig } from '../config/db.js';
+import { env } from '../config/env.js';
 
-const prisma = new PrismaClient({
-  log: ['query', 'info', 'warn', 'error'], // optional: enables query logging
-});
+// Prevent multiple instances of Prisma Client in development
+// caused by hot reloading (nodemon)
+const globalForPrisma = global;
 
-module.exports = prisma;
+const prisma = globalForPrisma.prisma || new PrismaClient(dbConfig);
+
+if (env !== 'production') {
+  globalForPrisma.prisma = prisma;
+}
+
+export default prisma;

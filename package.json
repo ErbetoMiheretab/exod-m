@@ -2,8 +2,12 @@
   "name": "exod-m",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "migrate": "npx prisma migrate dev",
+    "seed": "node src/database/prisma/seeds/permissionSeeder.js"
   },
   "keywords": [],
   "author": "",

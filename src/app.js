@@ -4,10 +4,10 @@ import express, { json, urlencoded, Router } from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 
-import { cors as corsConfig, env } from './config/env';
+import { cors as corsConfig, env } from './config/env.js';
 // NOTE: We use default import here because errorHandler was exported as default
-import userRouter from './modules/users/routes'; 
-import errorHandler from './shared/middleware/errorHandler'; 
+import userRouter from './modules/users/routes/index.js'; 
+import errorHandler from './shared/middleware/errorHandler.js'; 
 // import { requestLogger } from './shared/middleware/requestLogger'; // Uncomment if you have this file created
 
 

@@ -30,7 +30,7 @@ export default [
       },
     },
     rules: {
-      'no-unused-vars': 'warn',
+      'no-unused-vars': ["warn", { "argsIgnorePattern": "^_" }],
       'no-undef': 'error',
       'import/order': [
         'warn',
