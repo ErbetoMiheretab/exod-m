@@ -6,11 +6,10 @@ import morgan from 'morgan';
 
 import { cors as corsConfig, env } from './config/env.js';
 // NOTE: We use default import here because errorHandler was exported as default
-import userRouter from './modules/users/routes/index.js'; 
-import errorHandler from './shared/middleware/errorHandler.js'; 
+import docsRouter from './docs.routes.js';
+import userRouter from './modules/users/routes/index.js';
+import errorHandler from './shared/middleware/errorHandler.js';
 // import { requestLogger } from './shared/middleware/requestLogger'; // Uncomment if you have this file created
-
-
 
 class App {
   constructor() {
@@ -18,6 +17,7 @@ class App {
     this.initializeMiddlewares();
     this.initializeModules();
     this.initializeErrorHandling();
+    this.initializeDocs();
   }
 
   initializeMiddlewares() {
@@ -71,6 +71,12 @@ class App {
   initializeErrorHandling() {
     // Bind the error handler
     this.app.use(errorHandler);
+  }
+
+  initializeDocs() {
+    if (env === 'development') {
+      this.app.use('/api-docs', docsRouter);
+    }
   }
 
   getApp() {

@@ -7,6 +7,8 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "migrate": "npx prisma migrate dev",
+    "test:docs": "swagger-cli validate src/config/swagger.js",
+    "generate:docs": "node scripts/generate-openapi.js",
     "seed": "node src/database/prisma/seeds/permissionSeeder.js"
   },
   "keywords": [],
@@ -17,15 +19,21 @@
     "@prisma/client": "^6.19.0",
     "bcrypt": "^6.0.0",
     "compression": "^1.8.1",
+    "connect-redis": "^9.0.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "express-rate-limit": "^8.2.1",
+    "express-session": "^1.18.2",
     "helm": "^0.2.1",
     "helmet": "^8.1.0",
+    "ioredis": "^5.8.2",
     "joi": "^18.0.1",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.16.3",
-    "winston": "^3.18.3"
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "winston": "^3.18.3",
+    "yamljs": "^0.3.0"
   },
   "devDependencies": {
     "dotenv-cli": "^11.0.0",
