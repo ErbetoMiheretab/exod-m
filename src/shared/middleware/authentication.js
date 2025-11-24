@@ -1,58 +1,54 @@
-import { PrismaClient } from '@prisma/client';
-import { verify } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 
-import { UnauthorizedError } from '../utils/errors';
-import { logger } from '../utils/logger';
+// import prisma from '../../database/index.js';
 
-const prisma = new PrismaClient();
+import sessionRepository from '../../modules/users/repositories/sessionRepository.js';
+import { UnauthorizedError } from '../utils/errors.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Verify JWT token and attach user to request
  */
+
 const authenticate = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedError('No token provided');
+    // 1. Get Token from Cookie/Header
+    let token = req.cookies?.accessToken;
+    // ... fallback to header if needed ...
+     if (!token && req.headers.authorization?.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
     }
 
-    const token = authHeader.substring(7);
+    if (!token) throw new UnauthorizedError('No token provided');
 
-    // Verify token
-    const decoded = verify(token, process.env.JWT_SECRET);
+    // 2. Verify JWT
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Example: expect decoded.sessionId or decoded.userId
-    const session = await prisma.session.findUnique({
-      where: { id: decoded.sessionId },
-      include: {
-        user: {
-          include: {
-            role: { include: { permissions: true } },
-          },
-        },
-      },
-    });
+    // 3. Fetch Session from Redis (Super fast)
+    const session = await sessionRepository.findById(decoded.sessionId);
 
-    if (!session || session.invalidatedAt || session.expiresAt < new Date()) {
-      throw new UnauthorizedError('Invalid or expired session');
+    if (!session) {
+      throw new UnauthorizedError('Session expired');
     }
 
-    if (!session.user.active) {
+    if (!session.active) {
       throw new UnauthorizedError('User account is inactive');
     }
 
-    // Update last activity
-    await prisma.session.update({
-      where: { id: session.id },
-      data: { lastActivityAt: new Date() },
-    });
+    // 4. Attach User & Permissions from Redis Data
+    // We construct a minimal user object required for the app to function
+    req.user = {
+      id: session.userId,
+      role: { name: session.role }, // Adapted structure
+      // Add other cached fields if needed
+    };
 
-    // Attach user and permissions to request
-    req.user = session.user;
     req.session = session;
-    req.permissions = session.user.role.permissions.map((p) => p.code);
+    req.sessionId = decoded.sessionId;
 
+    // 5. Attach Permissions (Cached in Redis)
+    // This allows requirePermission middleware to work without DB calls
+    req.permissions = session.permissions || [];
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {

@@ -4,9 +4,9 @@ import {
   UnauthorizedError,
   ConflictError,
   DatabaseError,
-} from '../utils/errors';
-import { logger } from '../utils/logger';
-import { errorResponse } from '../utils/responses';
+} from '../utils/errors.js';
+import { logger } from '../utils/logger.js';
+import { errorResponse } from '../utils/responses.js';
 
 const errorHandler = (err, req, res, next) => {
   // 1. Prevent "Headers already sent" errors
@@ -87,4 +87,4 @@ const errorHandler = (err, req, res, next) => {
   errorResponse(res, error);
 };
 
-export default { errorHandler };
+export default errorHandler;

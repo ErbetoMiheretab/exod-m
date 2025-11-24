@@ -1,5 +1,5 @@
-import { ForbiddenError } from '../utils/errors';
-import { logger } from '../utils/logger';
+import { ForbiddenError } from '../utils/errors.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Check if user has required permission(s)

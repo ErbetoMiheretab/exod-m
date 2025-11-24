@@ -1,6 +1,6 @@
 import {morgan } from 'morgan';
 
-import {logger}  from'../utils/logger'
+import {logger}  from'../utils/logger.js'
 
 // Custom token for user ID
 morgan.token('user-id', (req) => req.user?.id || 'anonymous');

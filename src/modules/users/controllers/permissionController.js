@@ -1,7 +1,7 @@
 // src/modules/users/controllers/permissionController.js
 
-import responses from '../../../shared/utils/responses';
-import permissionService from '../services/permissionService';
+import {successResponse} from '../../../shared/utils/responses.js';
+import permissionService from '../services/permissionService.js';
 
 const {
   createPermission,
@@ -12,7 +12,7 @@ const {
   bulkCreatePermissions,
 } = permissionService;
 
-const { successResponse } = responses;
+// const { successResponse } = responses;
 
 class PermissionController {
   async createPermission(req, res, next) {

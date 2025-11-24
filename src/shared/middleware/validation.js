@@ -1,4 +1,4 @@
-import { ValidationError } from '../utils/errors';
+import { ValidationError } from '../utils/errors.js';
 
 /**
  * Validate request using Joi schema

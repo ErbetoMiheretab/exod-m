@@ -98,7 +98,7 @@ class RoleRepository {
     });
   }
 
-  async delete(id) {
+  async remove(id) {
     return await prisma.role.delete({
       where: { id }
     });
