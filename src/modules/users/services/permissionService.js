@@ -1,7 +1,7 @@
 // src/modules/users/services/permissionService.js
 
-import { AppError } from '../../../shared/utils/errors';
-import permissionRepository from '../repositories/permissionRepository';
+import { AppError } from '../../../shared/utils/errors.js';
+import permissionRepository from '../repositories/permissionRepository.js';
 
 const { remove, findByCode, create, findById, findAll, findByModule } = permissionRepository;
 

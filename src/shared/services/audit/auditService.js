@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient()
-
+import prisma from '../../../database/index.js'
+import {logger} from '../../utils/logger.js'
 
 class AuditService {
   async log(auditData) {
