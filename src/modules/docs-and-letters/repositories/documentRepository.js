@@ -1,5 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
+import prisma from '../../../database/index.js'; 
 
 class DocumentRepository {
   async create(data, userId) {
